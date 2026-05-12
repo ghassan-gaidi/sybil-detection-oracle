@@ -1,24 +1,24 @@
 # Sybil Analysis Report
 ## Synthetic Test Dataset
 
-**Generated:** 2026-05-12 21:54 UTC
-**Wallets Analyzed:** 200
-**Estimated Sybil Rate:** 40.5%
-**Estimated Airdrop Waste:** $121,500
+**Generated:** 2026-05-12 21:52 UTC
+**Wallets Analyzed:** 300
+**Estimated Sybil Rate:** 37.7%
+**Estimated Airdrop Waste:** $169,500
 
 ### Executive Summary
 
-Analysis of 200 wallets claiming Synthetic Test Dataset 
-identified 81 wallets (40.5%) exhibiting Sybil farming behavior.
-These wallets likely cost the protocol an estimated $121,500 in misallocated tokens.
+Analysis of 300 wallets claiming Synthetic Test Dataset 
+identified 113 wallets (37.7%) exhibiting Sybil farming behavior.
+These wallets likely cost the protocol an estimated $169,500 in misallocated tokens.
 
 ### Risk Distribution
 
 | Risk Level | Score Range | Wallets | % of Total |
 |-----------|-------------|---------|------------|
-| High Risk | 65-100 | 60 | 30.0% |
-| Medium Risk | 40-64 | 21 | 10.5% |
-| Low Risk | 0-39 | 119 | 59.5% |
+| High Risk | 65-100 | 90 | 30.0% |
+| Medium Risk | 40-64 | 23 | 7.7% |
+| Low Risk | 0-39 | 187 | 62.3% |
 
 ### Cluster Analysis
 
