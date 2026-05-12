@@ -12,6 +12,7 @@ For GitHub Actions, the RPC is auto-detected from RPC_ENDPOINTS list.
 """
 import sys, os, json, csv, math, time, random
 from pathlib import Path
+from web3 import Web3
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
@@ -58,7 +59,6 @@ AIRDROP_CONTRACTS = {
 # ======================================================================
 
 def get_web3():
-    from web3 import Web3
     for rpc in RPC_ENDPOINTS:
         try:
             w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={
