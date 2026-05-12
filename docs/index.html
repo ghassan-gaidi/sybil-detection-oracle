@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sybil Detection Oracle</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 2em; color: #fff; margin-bottom: 8px; }
+  h1 span { color: #8b5cf6; }
+  .subtitle { color: #888; margin-bottom: 32px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #1a1a2e; border: 1px solid #2a2a4e; border-radius: 8px; padding: 16px; text-align: center; }
+  .stat-card .number { font-size: 1.8em; font-weight: bold; }
+  .stat-card .label { font-size: 0.8em; color: #888; margin-top: 4px; }
+  .stat-card.high .number { color: #ef4444; }
+  .stat-card.med .number { color: #f59e0b; }
+  .stat-card.low .number { color: #22c55e; }
+  .stat-card.total .number { color: #8b5cf6; }
+  .card { background: #1a1a2e; border: 1px solid #2a2a4e; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { color: #fff; margin-bottom: 16px; font-size: 1.2em; }
+  .card h2 span { color: #8b5cf6; }
+  .method-list { list-style: none; }
+  .method-list li { padding: 8px 0; border-bottom: 1px solid #1f1f35; display: flex; align-items: center; gap: 8px; }
+  .method-list li:last-child { border: none; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .pricing-card { background: #1a1a2e; border: 1px solid #2a2a4e; border-radius: 8px; padding: 20px; text-align: center; }
+  .pricing-card.featured { border-color: #8b5cf6; }
+  .pricing-card .price { font-size: 1.5em; font-weight: bold; color: #8b5cf6; margin: 12px 0; }
+  .pricing-card .desc { color: #888; font-size: 0.9em; }
+  .btn { display: inline-block; padding: 12px 24px; background: #8b5cf6; color: #fff; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; text-decoration: none; margin-top: 12px; }
+  .btn:hover { background: #7c3aed; }
+  .footer { margin-top: 40px; text-align: center; color: #555; font-size: 0.8em; }
+  .risk-bar { height: 24px; border-radius: 12px; display: flex; overflow: hidden; margin: 16px 0; }
+  .risk-bar .high { background: #ef4444; }
+  .risk-bar .med { background: #f59e0b; }
+  .risk-bar .low { background: #22c55e; }
+  a { color: #8b5cf6; }
+  .contact { text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 <span>Sybil</span> Detection Oracle</h1>
+  <p class="subtitle">On-chain Sybil analysis for airdrop distributions and governance systems</p>
+
+  <div class="stats-grid" id="stats">
+    <div class="stat-card total"><div class="number">--</div><div class="label">Wallets Analyzed</div></div>
+    <div class="stat-card high"><div class="number">--</div><div class="label">High Risk</div></div>
+    <div class="stat-card med"><div class="number">--</div><div class="label">Medium Risk</div></div>
+    <div class="stat-card low"><div class="number">--</div><div class="label">Low Risk</div></div>
+  </div>
+
+  <div class="card">
+    <h2>📊 <span>Risk</span> Distribution</h2>
+    <div class="risk-bar" id="riskBar"></div>
+    <div id="riskLabels" style="display:flex;justify-content:space-between;font-size:0.85em;color:#888">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ <span>How</span> It Works</h2>
+    <ol class="method-list">
+      <li>📡 <strong>Data Collection</strong> — Pull wallets from airdrop claim contracts, governance proposals, or custom snapshots</li>
+      <li>🔗 <strong>Graph Analysis</strong> — Build transaction graphs identifying common funding sources and coordinated behavior</li>
+      <li>🧠 <strong>ML Clustering</strong> — DBSCAN and hierarchical clustering on 9-dimensional feature vectors</li>
+      <li>📊 <strong>Sybil Scoring</strong> — Each wallet scored 0-100 based on transaction patterns, age, funding, and balances</li>
+      <li>📋 <strong>Report Generation</strong> — Professional client-ready report with wallet scores and risk assessment</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>📈 <span>Latest</span> Analysis</h2>
+    <div id="latestAnalysis">
+      <p>Loading latest analysis results...</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💰 <span>Pricing</span></h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Basic</h3>
+        <div class="price">$500</div>
+        <div class="desc">Single snapshot analysis<br>1-10k wallets<br>CSV report</div>
+      </div>
+      <div class="pricing-card featured">
+        <h3>Advanced</h3>
+        <div class="price">$2,000</div>
+        <div class="desc">Full pipeline analysis<br>10-100k wallets<br>On-chain attestation</div>
+      </div>
+      <div class="pricing-card">
+        <h3>Enterprise</h3>
+        <div class="price">$5,000/mo</div>
+        <div class="desc">Ongoing monitoring<br>API access<br>Custom scoring</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="contact">
+    <p style="color:#888;margin-bottom:8px">Interested in protecting your airdrop from Sybil farmers?</p>
+    <p style="color:#555;font-size:0.9em">Contact via on-chain message to <code style="color:#8b5cf6">0x29021dd5306D7b3b6608a2bc8276D33c1200C7Ef</code></p>
+  </div>
+
+  <div class="footer">
+    Sybil Detection Oracle &mdash; Fully Autonomous Analysis System<br>
+    Runs daily at 02:00 UTC &mdash; <a href="https://github.com/ghassan-gaidi/sybil-detection-oracle">GitHub</a>
+  </div>
+</div>
+
+<script>
+async function loadData() {
+  try {
+    const resp = await fetch('./sybil_summary.json');
+    const data = await resp.json();
+    
+    document.querySelectorAll('.stat-card')[0].querySelector('.number').textContent = data.total_wallets || '--';
+    document.querySelectorAll('.stat-card')[1].querySelector('.number').textContent = data.high_risk || '--';
+    document.querySelectorAll('.stat-card')[2].querySelector('.number').textContent = data.med_risk || '--';
+    document.querySelectorAll('.stat-card')[3].querySelector('.number').textContent = data.low_risk || '--';
+    
+    const total = (data.high_risk || 0) + (data.med_risk || 0) + (data.low_risk || 0);
+    if (total > 0) {
+      const hp = (data.high_risk / total * 100).toFixed(0);
+      const mp = (data.med_risk / total * 100).toFixed(0);
+      const lp = (data.low_risk / total * 100).toFixed(0);
+      document.getElementById('riskBar').innerHTML =
+        `<div class="high" style="width:${hp}%"></div><div class="med" style="width:${mp}%"></div><div class="low" style="width:${lp}%"></div>`;
+      document.getElementById('riskLabels').innerHTML =
+        `<span>🔴 High: ${data.high_risk} (${hp}%)</span><span>🟡 Med: ${data.med_risk} (${mp}%)</span><span>🟢 Low: ${data.low_risk} (${lp}%)</span>`;
+    }
+    
+    document.getElementById('latestAnalysis').innerHTML = `
+      <p><strong>Sybil Rate:</strong> ${data.sybil_pct || 'N/A'}%</p>
+      <p><strong>Last Updated:</strong> ${data.last_updated || 'N/A'}</p>
+      <p><a href="./sybil_latest_report.md">📄 View Full Report</a> &middot; <a href="./sybil_latest_scores.csv">📊 Download Scores</a></p>
+    `;
+  } catch(e) {
+    document.getElementById('latestAnalysis').innerHTML = '<p>No data yet. Run the pipeline first.</p>';
+  }
+}
+loadData();
+</script>
+</body>
+</html>
