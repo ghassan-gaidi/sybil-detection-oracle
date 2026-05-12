@@ -1,0 +1,61 @@
+name: Sybil Analysis Pipeline (Daily)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      airdrop:
+        description: 'Airdrop to analyze'
+        default: 'synthetic'
+        type: choice
+        options:
+          - synthetic
+          - ens
+          - arbitrum
+          - optimism
+      wallets:
+        description: 'Wallets to analyze'
+        default: '300'
+        type: number
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install web3 networkx numpy requests
+
+      - name: Run analysis
+        id: analyze
+        run: |
+          python scripts/gh_runner.py \
+            --airdrop ${{ github.event.inputs.airdrop || 'synthetic' }} \
+            --wallets ${{ github.event.inputs.wallets || '300' }}
+
+      - name: Commit and push
+        run: |
+          git config --global user.name 'Sybil Bot'
+          git config --global user.email 'bot@sybil-oracle.local'
+          git add reports/ docs/ metrics/
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            summary="${{ steps.analyze.outputs.summary }}"
+            git commit -m "[AUTO] Sybil analysis | ${summary}"
+            git push
+            echo "✅ Pushed."
+          fi
