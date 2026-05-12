@@ -36,9 +36,9 @@ models/*.h5
 models/*.joblib
 !models/.gitkeep
 
-# Reports output
-reports/output/
-!reports/.gitkeep
+# Reports output — track analysis results
+reports/output/clusters.json
+reports/output/*.pkl
 
 # IDE
 .vscode/
