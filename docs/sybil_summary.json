@@ -1,0 +1,8 @@
+{
+  "total_wallets": 200,
+  "high_risk": 60,
+  "med_risk": 21,
+  "low_risk": 119,
+  "sybil_pct": "40.5",
+  "last_updated": "2026-05-12T21:54:06Z"
+}
