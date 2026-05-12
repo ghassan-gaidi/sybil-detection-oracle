@@ -10,6 +10,7 @@ Output: NetworkX graph objects for downstream clustering.
 
 import logging
 import json
+import pickle
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
 
@@ -313,7 +314,8 @@ class TransactionGraphBuilder:
         Args:
             filepath: Output file path
         """
-        nx.write_gpickle(self.digraph, filepath)
+        with open(filepath, "wb") as f:
+            pickle.dump(self.digraph, f)
         logger.info(f"Exported graph to {filepath}")
 
     def load_graph(self, filepath: str) -> nx.DiGraph:
@@ -326,7 +328,8 @@ class TransactionGraphBuilder:
         Returns:
             Loaded DiGraph
         """
-        self.digraph = nx.read_gpickle(filepath)
+        with open(filepath, "rb") as f:
+            self.digraph = pickle.load(f)
         logger.info(
             f"Loaded graph from {filepath}: "
             f"{self.digraph.number_of_nodes()} nodes, "

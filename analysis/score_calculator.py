@@ -194,6 +194,7 @@ class ScoreCalculator:
         cluster_wallets: List[str],
         tx_timestamps: Dict[str, List[int]],
         tx_amounts: Dict[str, List[float]],
+        max_peers: int = 50,
     ) -> float:
         """
         Score based on behavioral correlation with cluster members.
@@ -205,6 +206,7 @@ class ScoreCalculator:
             cluster_wallets: All wallets in the same cluster
             tx_timestamps: Dict mapping wallet -> list of timestamps
             tx_amounts: Dict mapping wallet -> list of amounts
+            max_peers: Maximum peers to compare against (to avoid O(n^2))
 
         Returns:
             Score component (0-100)
@@ -215,10 +217,14 @@ class ScoreCalculator:
         timing_corrs = []
         amount_corrs = []
 
-        for peer in cluster_wallets:
-            if peer.lower() == wallet_address.lower():
-                continue
+        # Sample peers to avoid O(n^2) for large clusters
+        peers = [p for p in cluster_wallets if p.lower() != wallet_address.lower()]
+        if len(peers) > max_peers:
+            import random
+            random.seed(42)
+            peers = random.sample(peers, max_peers)
 
+        for peer in peers:
             # Timing correlation
             ts_self = set(tx_timestamps.get(wallet_address, []))
             ts_peer = set(tx_timestamps.get(peer, []))
