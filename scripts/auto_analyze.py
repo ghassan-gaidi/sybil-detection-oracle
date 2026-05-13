@@ -99,8 +99,8 @@ AIRDROP_CONTRACTS = {
         "address": "0x4200000000000000000000000000000000000042",
         "name": "OP Airdrop",
         "chain": "optimism",
-        "claim_start": 105000000,
-        "claim_end": 120000000,
+        "claim_start": 14000000,
+        "claim_end": 22000000,
         "distributor": None,
         "data_file": "op_claimants.csv",
     },
@@ -176,7 +176,11 @@ def fetch_claimants_via_explorer(chain: str, api_key: str,
                     "apikey": api_key,
                 }
                 resp = requests.get(base_url, params=params, timeout=30)
-                data = resp.json()
+                try:
+                    data = resp.json()
+                except Exception:
+                    print(f"  Blocks {from_b}–{to_b}: API returned non-JSON (HTTP {resp.status_code}). V2 not available for this chain?")
+                    break
 
                 if data.get("status") == "1" and isinstance(data.get("result"), list):
                     logs = data["result"]
@@ -197,6 +201,9 @@ def fetch_claimants_via_explorer(chain: str, api_key: str,
                     break  # Success
                 elif data.get("message") == "No records found" or (isinstance(data.get("result"), str) and "No records" in data.get("result", "")):
                     print(f"  Blocks {from_b}–{to_b}: 0 events")
+                    break
+                elif "deprecated" in str(data.get("result", "")).lower():
+                    print(f"  Blocks {from_b}–{to_b}: V1 API deprecated, V2 not available. Skipping explorer.")
                     break
                 elif "rate limit" in str(data.get("result", "")).lower() or "max" in str(data.get("result", "")).lower():
                     wait = min(2 ** attempt, 10)
@@ -270,7 +277,7 @@ def fetch_claimants_via_rpc(w3, contract_address: str,
     claimants = set()
     zero_addr = "0x0000000000000000000000000000000000000000"
 
-    step = 5000  # Conservative step for public RPCs
+    step = 10000  # 10k blocks per query (balances speed vs RPC 10k event limit)
     for from_block in range(start_block, end_block, step):
         to_block = min(from_block + step - 1, end_block)
         try:
@@ -278,8 +285,8 @@ def fetch_claimants_via_rpc(w3, contract_address: str,
                 from_block=from_block, to_block=to_block,
             )
             for ev in events:
-                sender = ev.args.from_.lower()
-                receiver = ev.args.to.lower()
+                sender = ev.args["from"].lower()
+                receiver = ev.args["to"].lower()
                 if sender != zero_addr and receiver != zero_addr:
                     claimants.add(receiver)
                     if len(claimants) >= max_wallets:
