@@ -17,13 +17,31 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-# Multi-RPC fallback for GH Actions compatibility
-RPC_ENDPOINTS = [
-    "https://ethereum-rpc.publicnode.com",
-    "https://eth.llamarpc.com",
-    "https://1rpc.io/eth",
-    "https://eth.drpc.org",
-]
+# Multi-RPC fallback per chain for GH Actions compatibility
+CHAIN_RPC_ENDPOINTS = {
+    "ethereum": [
+        "https://ethereum-rpc.publicnode.com",
+        "https://eth.llamarpc.com",
+        "https://1rpc.io/eth",
+        "https://eth.drpc.org",
+    ],
+    "arbitrum": [
+        "https://arbitrum-rpc.publicnode.com",
+        "https://arb1.arbitrum.io/rpc",
+        "https://1rpc.io/arb",
+        "https://arbitrum.drpc.org",
+    ],
+    "optimism": [
+        "https://optimism-rpc.publicnode.com",
+        "https://mainnet.optimism.io",
+        "https://1rpc.io/op",
+        "https://optimism.drpc.org",
+    ],
+}
+
+# Default chain (for backward compat)
+DEFAULT_CHAIN = "ethereum"
+RPC_ENDPOINTS = CHAIN_RPC_ENDPOINTS[DEFAULT_CHAIN]
 
 HOME = Path(__file__).parent.parent
 DATA_DIR = HOME / "data"
@@ -32,25 +50,32 @@ METRICS_DIR = HOME / "metrics"
 NOW = datetime.now(timezone.utc)
 TIMESTAMP = NOW.strftime("%Y%m%d_%H%M%S")
 
-# Known airdrop claim contracts
+# Known airdrop contracts (per chain)
+# Uses Transfer(mint) events from token contracts since Claimed events vary between protocols
 AIRDROP_CONTRACTS = {
     "ens": {
         "address": "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72",
         "name": "ENS Airdrop",
+        "chain": "ethereum",
         "start_block": 14641000,
         "end_block": 15000000,
+        "deploy_block": 14641000,
     },
     "arbitrum": {
         "address": "0x912CE59144191C1204E64559FE8253a0e49E6548",
         "name": "Arbitrum Airdrop",
-        "start_block": 16816200,
-        "end_block": 17200000,
+        "chain": "arbitrum",
+        "start_block": 72701850,
+        "end_block": 80000000,
+        "deploy_block": 72701850,
     },
     "optimism": {
-        "address": "0xFE5B5bdE5237350C679e83b2C12EDFebA1D31e5D",
+        "address": "0x4200000000000000000000000000000000000042",
         "name": "OP Airdrop",
-        "start_block": 16220000,
-        "end_block": 16600000,
+        "chain": "optimism",
+        "start_block": 105000000,
+        "end_block": 120000000,
+        "deploy_block": 105000000,
     },
 }
 
@@ -58,8 +83,10 @@ AIRDROP_CONTRACTS = {
 # RPC Connection
 # ======================================================================
 
-def get_web3():
-    for rpc in RPC_ENDPOINTS:
+def get_web3(chain: str = DEFAULT_CHAIN):
+    """Try each RPC endpoint for the given chain until one works."""
+    endpoints = CHAIN_RPC_ENDPOINTS.get(chain, RPC_ENDPOINTS)
+    for rpc in endpoints:
         try:
             w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={
                 "headers": {"User-Agent": "Mozilla/5.0 (compatible; SybilBot/1.0)"},
@@ -76,55 +103,57 @@ def get_web3():
 # Data Ingestion
 # ======================================================================
 
-def fetch_claimants(w3, contract_address: str, start_block: int, end_block: int, max_wallets: int = 500):
+def fetch_claimants(w3, contract_address: str, start_block: int, end_block: int,
+                    max_wallets: int = 500, deploy_block: int = None):
     """
-    Fetch wallet addresses that claimed from an airdrop contract.
-    Uses Transfer or Claimed event logs.
+    Fetch wallet addresses that received tokens via Transfer events from address(0).
+    This captures airdrop claims / initial distributions for any ERC-20 token contract.
+    Uses Transfer(address,address,uint256) events with from=0x0 (mints).
     """
-    print(f"\nFetching claimants from {contract_address}...")
+    print(f"\nFetching token recipients from {contract_address}...")
     print(f"  Block range: {start_block} – {end_block}")
-    
+
+    transfer_abi = [{
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "name": "from", "type": "address"},
+            {"indexed": True, "name": "to", "type": "address"},
+            {"indexed": False, "name": "value", "type": "uint256"},
+        ],
+        "name": "Transfer",
+        "type": "event",
+    }]
+
     contract = w3.eth.contract(
         address=Web3.to_checksum_address(contract_address),
-        abi=[{
-            "anonymous": False,
-            "inputs": [
-                {"indexed": True, "name": "delegate", "type": "address"},
-                {"indexed": False, "name": "amount", "type": "uint256"},
-            ],
-            "name": "DelegateChanged",
-            "type": "event",
-        }, {
-            "anonymous": False,
-            "inputs": [
-                {"indexed": True, "name": "claimant", "type": "address"},
-                {"indexed": False, "name": "amount", "type": "uint256"},
-            ],
-            "name": "Claimed",
-            "type": "event",
-        }]
+        abi=transfer_abi,
     )
-    
+
     claimants = set()
-    
-    # Try to get Claimed events in batches
-    step = 100000  # block range per query
+    zero_addr = "0x0000000000000000000000000000000000000000"
+
+    # Batch query blocks. Use smaller steps on public RPCs to avoid timeouts.
+    step = 10000  # 10k blocks per query
     for from_block in range(start_block, end_block, step):
         to_block = min(from_block + step - 1, end_block)
         try:
-            events = contract.events.Claimed.get_logs(from_block=from_block, to_block=to_block)
+            events = contract.events.Transfer.get_logs(
+                from_block=from_block, to_block=to_block,
+                argument_filters={"from": zero_addr},
+            )
             for ev in events:
-                claimants.add(ev.args.claimant.lower())
+                claimants.add(ev.args.to.lower())
                 if len(claimants) >= max_wallets:
                     print(f"  Reached max {max_wallets} wallets.")
                     return list(claimants)
-            print(f"  Blocks {from_block}–{to_block}: {len(claimants)} claimants so far")
-            time.sleep(0.3)  # rate limit
+            print(f"  Blocks {from_block}–{to_block}: {len(claimants)} recipients so far")
+            time.sleep(0.2)  # rate limit
         except Exception as e:
             print(f"  Blocks {from_block}–{to_block}: {e}")
+            time.sleep(1)  # backoff on error
             continue
-    
-    print(f"  Total claimants found: {len(claimants)}")
+
+    print(f"  Total recipients found: {len(claimants)}")
     return list(claimants)[:max_wallets]
 
 def build_wallet_profiles(w3, addresses: List[str]) -> List[Dict]:
@@ -381,10 +410,12 @@ def main():
     else:
         ac = AIRDROP_CONTRACTS[args.airdrop]
         airdrop_name = ac["name"]
-        w3 = get_web3()
+        chain = ac.get("chain", DEFAULT_CHAIN)
+        w3 = get_web3(chain)
+        print(f"  Chain: {chain}")
         addresses = fetch_claimants(w3, ac["address"], ac["start_block"], ac["end_block"], args.wallets)
         if len(addresses) < 10:
-            print("⚠️ Too few addresses from on-chain. Falling back to synthetic data.")
+            print(f"⚠️ Too few addresses ({len(addresses)}) from on-chain for {chain}. Falling back to synthetic data.")
             profiles = generate_synthetic_dataset(n_wallets=args.wallets, sybil_ratio=0.3)
             airdrop_name = "Synthetic Test Dataset"
         else:
