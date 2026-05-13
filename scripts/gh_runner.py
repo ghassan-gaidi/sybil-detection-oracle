@@ -49,7 +49,8 @@ def get_summary_line():
         with open(csv_path) as f:
             wallets = list(csv.DictReader(f))
         high = len([w for w in wallets if w.get("risk_level") == "HIGH"])
-        return f"{len(wallets)} wallets, {high} high risk"
+        total = len(wallets)
+        return f"{total} wallets, {high} high risk"
     return "analysis complete"
 
 def main():

@@ -41,6 +41,9 @@ jobs:
 
       - name: Run analysis
         id: analyze
+        env:
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+          ARBISCAN_API_KEY: ${{ secrets.ARBISCAN_API_KEY }}
         run: |
           python scripts/gh_runner.py \
             --airdrop ${{ github.event.inputs.airdrop || 'synthetic' }} \
